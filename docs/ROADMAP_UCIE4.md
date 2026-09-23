@@ -34,19 +34,24 @@ The project isolates future-evolution points without inventing 4.0 requirements:
 - administrative reliability-state flush
 - timeout/recovery directed and model tests
 
-### M3 — Verification closure — NEXT
+### M3 — Verification closure — COMPLETE
 - exact duplicate-history tracking
-- UVM functional coverage collector
-- error/backpressure/state/retry crosses
-- reset/disable during outstanding traffic
-- timeout/retry/link-fault SVA
-- deterministic seeds and regression summaries
-- Verilator lint in CI
+- UVM reliability functional coverage collector
+- state/error/backpressure coverage crosses
+- reset with outstanding traffic regression
+- administrative-disable reliability-epoch regression
+- retry/fatal/link-state SVA
+- deterministic Questa regression seeds
+- machine-readable UVM regression summary
+- Verilator RTL lint in CI
 
-### M4 — Performance/implementation
-- pipelined CRC option
+### M4 — Performance/implementation — NEXT
+- optional pipelined CRC architecture
 - throughput and latency counters
-- synthesis, area, Fmax, and power proxy reports
+- retry/recovery penalty counters
+- synthesis automation
+- machine-readable area/Fmax reports
+- implementation comparison of combinational and pipelined CRC
 
 ### M5 — Official future revision mapping
 After an official UCIe 4.0 release, add paraphrased requirement IDs, tests, and traceability before changing claims or labels.
