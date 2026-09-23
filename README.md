@@ -50,20 +50,42 @@ The interfaces are simplified educational abstractions. This repository does **n
 - administrative disable flushes reliability state and permits a clean re-enable
 - race handling for ACK arrival while replay is pending
 
+### M3 — verification closure
+
+- exact duplicate-history tracking instead of modular-distance approximation
+- UVM reliability functional coverage with state/error/backpressure crosses
+- reset and administrative-disable regressions while reliability state is outstanding
+- SVA for link gating, stalled-transfer stability, retry behavior, duplicate re-ACK, and fatal-fault latching
+- deterministic Questa seed runner
+- machine-readable UVM regression summary at `reports/uvm/summary.json`
+- Verilator RTL lint in GitHub Actions
+
 ## Quick checks
 
 ```bash
 python -m pytest -q
+make lint
 make smoke
 ```
 
-Current CI evidence:
+Current automated evidence:
 - **14 Python reliability tests**
-- **4 directed RTL smoke targets**
+- **6 directed RTL smoke targets**
   - corruption → retry → replay
   - selective-ACK replay integrity
   - duplicate/order handling
-  - ACK timeout → bounded retry exhaustion → fail-stop/reset
+  - ACK timeout → bounded retry exhaustion → fail-stop
+  - administrative disable → reliability epoch flush
+  - reset with an outstanding flit → no stale replay, sequence epoch restarts
+- Verilator RTL lint
+
+For a simulator installation that provides UVM:
+
+```bash
+SEEDS="1 7 42 31415" ./scripts/run_questa_regression.sh
+```
+
+The seeded runner writes per-seed logs plus a JSON summary. It is intentionally separate from the open-source CI jobs because the repository does not redistribute a commercial simulator.
 
 ## Repository layout
 
@@ -92,16 +114,16 @@ docs/                Architecture, scope, verification plan, roadmap, traceabili
 - retries stop at the configured budget and raise a link fault
 - backpressure cannot change an in-flight payload
 - normal data transfer is blocked while the link is inactive or faulted
+- reset/disable cannot leak pre-reset outstanding traffic into a new reliability epoch
 
 ## Next engineering frontier
 
-M3 focuses on verification closure and observability:
-- exact duplicate-history tracking rather than a modular-distance approximation
-- UVM functional coverage collector and crosses
-- reset/disable during outstanding traffic
-- retry/timeout/link-state SVA
-- deterministic regression seeds and machine-readable summaries
-- Verilator RTL lint in CI
+M4 focuses on performance and implementation evidence:
+- optional pipelined CRC datapath
+- clean-link throughput and latency counters
+- retry/recovery penalty counters
+- synthesis scripts and machine-readable area/Fmax reports
+- implementation-oriented comparison of combinational vs pipelined CRC
 
 ## Standards references
 
