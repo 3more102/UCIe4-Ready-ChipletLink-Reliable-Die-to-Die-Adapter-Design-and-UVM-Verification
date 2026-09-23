@@ -3,6 +3,7 @@ module ucie_adapter_rx #(
 ) (
   input  logic clk,
   input  logic rst_n,
+  input  logic flush_i,
   input  logic link_active_i,
 
   input  logic                         rdi_valid_i,
@@ -43,6 +44,17 @@ module ucie_adapter_rx #(
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
+      hold_valid_q     <= 1'b0;
+      hold_data_q      <= '0;
+      expected_seq_q   <= '0;
+      ack_valid_o      <= 1'b0;
+      ack_seq_o        <= '0;
+      retry_valid_o    <= 1'b0;
+      retry_seq_o      <= '0;
+      crc_error_o      <= 1'b0;
+      duplicate_o      <= 1'b0;
+      sequence_error_o <= 1'b0;
+    end else if (flush_i) begin
       hold_valid_q     <= 1'b0;
       hold_data_q      <= '0;
       expected_seq_q   <= '0;

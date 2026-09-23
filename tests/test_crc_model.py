@@ -129,3 +129,35 @@ def test_constructor_rejects_invalid_configuration():
         ReliabilityModel(max_retries=-1)
     with pytest.raises(ValueError):
         ReliabilityModel(duplicate_window=0)
+    with pytest.raises(ValueError):
+        ReliabilityModel(ack_timeout=0)
+
+
+def test_ack_timeout_rearms_after_each_replay_then_exhausts_budget():
+    m = ReliabilityModel(max_retries=2, ack_timeout=3)
+    seq, data, crc = m.send(0xA55A)
+
+    assert m.tick(2) is None
+    assert m.tick() == seq
+    assert m.retry(seq) == (seq, data, crc)
+
+    assert m.tick(3) == seq
+    assert m.retry(seq) == (seq, data, crc)
+
+    assert m.tick(3) == seq
+    with pytest.raises(RetryLimitExceeded):
+        m.retry(seq)
+
+
+def test_administrative_flush_resets_reliability_epoch():
+    m = ReliabilityModel(depth=4, ack_timeout=2)
+    seq, _, _ = m.send(0x123)
+    assert seq in m.replay
+    assert m.tick(2) == seq
+    m.administrative_flush()
+    assert m.replay == {}
+    assert m.retry_count == {}
+    assert m.age == {}
+    assert m.next_seq == 0
+    assert m.expected_rx_seq == 0
+    assert m.send(0x456)[0] == 0

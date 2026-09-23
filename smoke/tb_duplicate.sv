@@ -23,13 +23,25 @@ module tb_duplicate;
   integer duplicate_pulses = 0;
 
   ucie_adapter_rx #(.DUP_WINDOW(16)) dut (
-    .clk(clk), .rst_n(rst_n), .link_active_i(1'b1),
-    .rdi_valid_i(rdi_valid), .rdi_ready_o(rdi_ready),
-    .rdi_data_i(rdi_data), .rdi_seq_i(rdi_seq), .rdi_crc_i(rdi_crc),
-    .fdi_valid_o(fdi_valid), .fdi_ready_i(1'b1), .fdi_data_o(fdi_data),
-    .ack_valid_o(ack_valid), .ack_seq_o(ack_seq),
-    .retry_valid_o(retry_valid), .retry_seq_o(retry_seq),
-    .crc_error_o(crc_error), .duplicate_o(duplicate), .sequence_error_o(sequence_error)
+    .clk(clk),
+    .rst_n(rst_n),
+    .flush_i(1'b0),
+    .link_active_i(1'b1),
+    .rdi_valid_i(rdi_valid),
+    .rdi_ready_o(rdi_ready),
+    .rdi_data_i(rdi_data),
+    .rdi_seq_i(rdi_seq),
+    .rdi_crc_i(rdi_crc),
+    .fdi_valid_o(fdi_valid),
+    .fdi_ready_i(1'b1),
+    .fdi_data_o(fdi_data),
+    .ack_valid_o(ack_valid),
+    .ack_seq_o(ack_seq),
+    .retry_valid_o(retry_valid),
+    .retry_seq_o(retry_seq),
+    .crc_error_o(crc_error),
+    .duplicate_o(duplicate),
+    .sequence_error_o(sequence_error)
   );
 
   always @(posedge clk) begin

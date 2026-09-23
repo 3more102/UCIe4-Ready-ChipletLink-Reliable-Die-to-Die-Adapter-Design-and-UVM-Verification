@@ -30,21 +30,31 @@ def crc32_ucie_edu(data: int, seq: int, flit_w: int = 256, seq_w: int = 8) -> in
 class ReliabilityModel:
     """Reference model for the reliable educational die-to-die link."""
 
-    def __init__(self, depth=16, max_retries=3, duplicate_window=16):
+    def __init__(
+        self,
+        depth=16,
+        max_retries=3,
+        duplicate_window=16,
+        ack_timeout=64,
+    ):
         if not 1 <= depth <= SEQ_MOD:
             raise ValueError("depth must be in [1, 256]")
         if max_retries < 0:
             raise ValueError("max_retries must be non-negative")
         if not 1 <= duplicate_window < SEQ_MOD:
             raise ValueError("duplicate_window must be in [1, 255]")
+        if ack_timeout < 1:
+            raise ValueError("ack_timeout must be positive")
 
         self.depth = depth
         self.max_retries = max_retries
         self.duplicate_window = duplicate_window
+        self.ack_timeout = ack_timeout
         self.next_seq = 0
         self.expected_rx_seq = 0
         self.replay = {}
         self.retry_count = {}
+        self.age = {}
 
     def _allocate_seq(self) -> int:
         seq = self.next_seq
@@ -62,6 +72,7 @@ class ReliabilityModel:
         crc = crc32_ucie_edu(data, seq)
         self.replay[seq] = (data, crc)
         self.retry_count[seq] = 0
+        self.age[seq] = 0
         return seq, data, crc
 
     def receive(self, seq: int, data: int, crc: int):
@@ -112,6 +123,7 @@ class ReliabilityModel:
         existed = seq in self.replay
         self.replay.pop(seq, None)
         self.retry_count.pop(seq, None)
+        self.age.pop(seq, None)
         return existed
 
     def retry(self, seq: int):
@@ -123,5 +135,27 @@ class ReliabilityModel:
                 f"sequence {seq} exceeded retry budget {self.max_retries}"
             )
         self.retry_count[seq] = count
+        self.age[seq] = 0
         data, crc = self.replay[seq]
         return seq, data, crc
+
+    def tick(self, cycles: int = 1):
+        """Advance ACK timers and return the oldest timed-out sequence, if any."""
+        if cycles < 0:
+            raise ValueError("cycles must be non-negative")
+        for _ in range(cycles):
+            for seq in tuple(self.age):
+                self.age[seq] += 1
+
+        for seq in self.replay:
+            if self.age[seq] >= self.ack_timeout:
+                return seq
+        return None
+
+    def administrative_flush(self):
+        """Model link-disable semantics: discard outstanding reliability state."""
+        self.next_seq = 0
+        self.expected_rx_seq = 0
+        self.replay.clear()
+        self.retry_count.clear()
+        self.age.clear()

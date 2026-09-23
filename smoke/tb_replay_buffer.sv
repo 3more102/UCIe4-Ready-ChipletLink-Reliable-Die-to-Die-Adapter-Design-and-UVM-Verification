@@ -17,14 +17,36 @@ module tb_replay_buffer;
   logic lookup_found;
   logic [FLIT_W-1:0] lookup_data;
   logic [CRC_W-1:0] lookup_crc;
+  logic [2:0] lookup_retry_count;
+  logic timeout_valid;
+  logic [SEQ_W-1:0] timeout_seq;
 
-  ucie_replay_buffer #(.DEPTH(4)) dut (
-    .clk(clk), .rst_n(rst_n),
-    .push_i(push), .push_seq_i(push_seq), .push_data_i(push_data), .push_crc_i(push_crc),
-    .full_o(full), .push_seq_in_use_o(push_seq_in_use),
-    .ack_i(ack), .ack_seq_i(ack_seq),
-    .lookup_seq_i(lookup_seq), .lookup_found_o(lookup_found),
-    .lookup_data_o(lookup_data), .lookup_crc_o(lookup_crc)
+  ucie_replay_buffer #(
+    .DEPTH(4),
+    .ACK_TIMEOUT_CYCLES(16),
+    .MAX_RETRIES(3)
+  ) dut (
+    .clk(clk),
+    .rst_n(rst_n),
+    .flush_i(1'b0),
+    .timer_enable_i(1'b0),
+    .push_i(push),
+    .push_seq_i(push_seq),
+    .push_data_i(push_data),
+    .push_crc_i(push_crc),
+    .full_o(full),
+    .push_seq_in_use_o(push_seq_in_use),
+    .ack_i(ack),
+    .ack_seq_i(ack_seq),
+    .replay_sent_i(1'b0),
+    .replay_sent_seq_i('0),
+    .lookup_seq_i(lookup_seq),
+    .lookup_found_o(lookup_found),
+    .lookup_data_o(lookup_data),
+    .lookup_crc_o(lookup_crc),
+    .lookup_retry_count_o(lookup_retry_count),
+    .timeout_valid_o(timeout_valid),
+    .timeout_seq_o(timeout_seq)
   );
 
   task automatic do_push(input logic [SEQ_W-1:0] seq, input logic [FLIT_W-1:0] data);
