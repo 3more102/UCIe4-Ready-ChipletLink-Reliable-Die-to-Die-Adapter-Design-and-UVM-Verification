@@ -30,7 +30,7 @@ package ucie_adapter_pkg;
         crc = {crc[30:0], 1'b0};
         if (feedback) crc ^= 32'h04C11DB7;
       end
-      return ~crc;
+      crc32_bitwise = ~crc;
     end
   endfunction
 endpackage

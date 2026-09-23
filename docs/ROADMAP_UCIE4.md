@@ -45,10 +45,17 @@ The project isolates future-evolution points without inventing 4.0 requirements:
 - machine-readable UVM regression summary
 - Verilator RTL lint in CI
 
-### M4 — Performance/implementation — NEXT
+### M4 — Performance/implementation — IN PROGRESS
+
+Completed in M4-A:
+- synthesizable saturating performance counters
+- protocol accepts vs RDI transfers for replay-overhead measurement
+- retry/error/stall observability
+- directed performance-counter regression
+
+Remaining:
 - optional pipelined CRC architecture
-- throughput and latency counters
-- retry/recovery penalty counters
+- latency instrumentation
 - synthesis automation
 - machine-readable area/Fmax reports
 - implementation comparison of combinational and pipelined CRC

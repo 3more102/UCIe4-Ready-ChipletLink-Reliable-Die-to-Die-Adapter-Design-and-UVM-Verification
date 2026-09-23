@@ -47,6 +47,7 @@ module ucie_replay_buffer #(
   integer free_idx;
   integer i;
 
+`ifndef SYNTHESIS
   initial begin
     if (DEPTH < 1)
       $error("REPLAY DEPTH must be >= 1");
@@ -55,6 +56,7 @@ module ucie_replay_buffer #(
     if (MAX_RETRIES < 0)
       $error("MAX_RETRIES must be >= 0");
   end
+`endif
 
   always_comb begin
     full_o                = 1'b1;

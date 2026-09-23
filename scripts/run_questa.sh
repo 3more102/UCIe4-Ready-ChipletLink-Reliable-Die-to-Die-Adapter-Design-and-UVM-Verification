@@ -14,6 +14,7 @@ vlog -sv \
   rtl/ucie_replay_buffer.sv \
   rtl/ucie_adapter_tx.sv \
   rtl/ucie_adapter_rx.sv \
+  rtl/ucie_perf_counters.sv \
   rtl/ucie_adapter_top.sv \
   verification/interfaces/fdi_if.sv \
   verification/interfaces/error_inject_if.sv \

@@ -1,0 +1,8 @@
+read_verilog -sv rtl/ucie_crc32_engine.sv
+chparam -set PIPELINED 0 ucie_crc32_engine
+hierarchy -check -top ucie_crc32_engine
+proc
+opt
+synth -top ucie_crc32_engine
+check
+tee -o reports/synth/crc_comb.json stat -json -top ucie_crc32_engine
