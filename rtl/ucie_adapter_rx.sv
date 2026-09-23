@@ -37,10 +37,12 @@ module ucie_adapter_rx #(
   logic recent_duplicate;
   integer i;
 
+`ifndef SYNTHESIS
   initial begin
     if (DUP_WINDOW < 1)
       $error("DUP_WINDOW must be >= 1");
   end
+`endif
 
   assign calc_crc    = crc32_bitwise(rdi_data_i, rdi_seq_i);
   assign rdi_ready_o = link_active_i && (!hold_valid_q || fdi_ready_i);
