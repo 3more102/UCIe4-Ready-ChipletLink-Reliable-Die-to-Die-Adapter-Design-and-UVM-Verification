@@ -2,7 +2,8 @@ module ucie_adapter_top #(
   parameter int REPLAY_DEPTH       = 16,
   parameter int DUP_WINDOW         = 16,
   parameter int ACK_TIMEOUT_CYCLES = 64,
-  parameter int MAX_RETRIES        = 3
+  parameter int MAX_RETRIES        = 3,
+  parameter int PERF_COUNTER_W     = 32
 ) (
   input  logic clk,
   input  logic rst_n,
@@ -47,7 +48,15 @@ module ucie_adapter_top #(
   output logic [ucie_adapter_pkg::SEQ_W-1:0] retry_exhausted_seq_o,
   output logic duplicate_o,
   output logic sequence_error_o,
-  output logic seq_wrap_block_o
+  output logic seq_wrap_block_o,
+
+  output logic [PERF_COUNTER_W-1:0] perf_active_cycles_o,
+  output logic [PERF_COUNTER_W-1:0] perf_fdi_tx_accepts_o,
+  output logic [PERF_COUNTER_W-1:0] perf_rdi_tx_transfers_o,
+  output logic [PERF_COUNTER_W-1:0] perf_fdi_rx_deliveries_o,
+  output logic [PERF_COUNTER_W-1:0] perf_retry_requests_o,
+  output logic [PERF_COUNTER_W-1:0] perf_error_events_o,
+  output logic [PERF_COUNTER_W-1:0] perf_tx_stall_cycles_o
 );
   import ucie_adapter_pkg::*;
 
@@ -59,7 +68,22 @@ module ucie_adapter_top #(
   logic [SEQ_W-1:0] tx_retry_exhausted_seq;
   logic flush_link;
 
+  logic perf_fdi_tx_accept;
+  logic perf_rdi_tx_transfer;
+  logic perf_fdi_rx_deliver;
+  logic perf_retry_request;
+  logic perf_error_event;
+  logic perf_tx_stall;
+
   assign flush_link = !link_enable_i;
+
+  assign perf_fdi_tx_accept  = fdi_tx_valid_i && fdi_tx_ready_o;
+  assign perf_rdi_tx_transfer = rdi_tx_valid_o && rdi_tx_ready_i;
+  assign perf_fdi_rx_deliver = fdi_rx_valid_o && fdi_rx_ready_i;
+  assign perf_retry_request  = peer_retry_valid_i || local_retry_valid_o;
+  assign perf_error_event    = rx_crc_error || rx_sequence_error ||
+                               tx_replay_miss || tx_retry_exhausted;
+  assign perf_tx_stall       = rdi_tx_valid_o && !rdi_tx_ready_i;
 
   ucie_link_manager u_link (
     .clk(clk),
@@ -119,6 +143,27 @@ module ucie_adapter_top #(
     .crc_error_o(rx_crc_error),
     .duplicate_o(rx_duplicate),
     .sequence_error_o(rx_sequence_error)
+  );
+
+  ucie_perf_counters #(
+    .COUNTER_W(PERF_COUNTER_W)
+  ) u_perf (
+    .clk(clk),
+    .rst_n(rst_n),
+    .link_active_i(link_active_o),
+    .fdi_tx_accept_i(perf_fdi_tx_accept),
+    .rdi_tx_transfer_i(perf_rdi_tx_transfer),
+    .fdi_rx_deliver_i(perf_fdi_rx_deliver),
+    .retry_request_i(perf_retry_request),
+    .error_event_i(perf_error_event),
+    .tx_stall_i(perf_tx_stall),
+    .active_cycles_o(perf_active_cycles_o),
+    .fdi_tx_accepts_o(perf_fdi_tx_accepts_o),
+    .rdi_tx_transfers_o(perf_rdi_tx_transfers_o),
+    .fdi_rx_deliveries_o(perf_fdi_rx_deliveries_o),
+    .retry_requests_o(perf_retry_requests_o),
+    .error_events_o(perf_error_events_o),
+    .tx_stall_cycles_o(perf_tx_stall_cycles_o)
   );
 
   assign crc_error_o            = rx_crc_error;
