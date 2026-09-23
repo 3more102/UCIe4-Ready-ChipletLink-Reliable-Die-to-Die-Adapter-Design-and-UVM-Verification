@@ -16,4 +16,6 @@
 | EDU-LINK-003 | Project-defined | administrative disable flushes reliability epoch before re-enable | TX/RX/replay buffer/model | V016 | Implemented M2/M3 |
 | EDU-LINK-004 | Project-defined | reset destroys pre-reset outstanding reliability state and restarts sequence epoch | TX/RX/replay buffer/link manager | V008 | Implemented M3 |
 | EDU-VER-001 | Project-defined | verification must cover error/state/backpressure interactions and fatal recovery observability | UVM coverage + SVA | seeded UVM regression | Implemented M3 |
+| EDU-PERF-001 | Project-defined | accepted traffic, physical-side transfers, retries, errors, and stalls must be independently measurable | `ucie_perf_counters.sv` + top-level outputs | performance-counter smoke | Implemented M4-A |
+| EDU-PERF-002 | Project-defined | reliability replay overhead must be observable as RDI transfers beyond protocol-side accepts | performance counters | performance-counter smoke | Implemented M4-A |
 | UCIE4-* | Future official source | reserved until an official public UCIe 4.0 release exists | TBD | TBD | Blocked on official release |
