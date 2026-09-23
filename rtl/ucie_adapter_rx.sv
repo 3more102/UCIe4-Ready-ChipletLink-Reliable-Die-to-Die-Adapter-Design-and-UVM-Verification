@@ -31,16 +31,30 @@ module ucie_adapter_rx #(
   logic [CRC_W-1:0] calc_crc;
   logic accept_rdi;
   logic [SEQ_W-1:0] expected_seq_q;
-  logic [SEQ_W-1:0] distance_back;
-  logic recent_duplicate;
 
-  assign calc_crc         = crc32_bitwise(rdi_data_i, rdi_seq_i);
-  assign rdi_ready_o      = link_active_i && (!hold_valid_q || fdi_ready_i);
-  assign accept_rdi       = rdi_valid_i && rdi_ready_o;
-  assign fdi_valid_o      = hold_valid_q;
-  assign fdi_data_o       = hold_data_q;
-  assign distance_back    = expected_seq_q - rdi_seq_i;
-  assign recent_duplicate = (distance_back != '0) && (distance_back <= DUP_WINDOW);
+  logic history_valid_q [DUP_WINDOW];
+  logic [SEQ_W-1:0] history_seq_q [DUP_WINDOW];
+  logic recent_duplicate;
+  integer i;
+
+  initial begin
+    if (DUP_WINDOW < 1)
+      $error("DUP_WINDOW must be >= 1");
+  end
+
+  assign calc_crc    = crc32_bitwise(rdi_data_i, rdi_seq_i);
+  assign rdi_ready_o = link_active_i && (!hold_valid_q || fdi_ready_i);
+  assign accept_rdi  = rdi_valid_i && rdi_ready_o;
+  assign fdi_valid_o = hold_valid_q;
+  assign fdi_data_o  = hold_data_q;
+
+  always_comb begin
+    recent_duplicate = 1'b0;
+    for (int k = 0; k < DUP_WINDOW; k++) begin
+      if (history_valid_q[k] && history_seq_q[k] == rdi_seq_i)
+        recent_duplicate = 1'b1;
+    end
+  end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -54,6 +68,10 @@ module ucie_adapter_rx #(
       crc_error_o      <= 1'b0;
       duplicate_o      <= 1'b0;
       sequence_error_o <= 1'b0;
+      for (i = 0; i < DUP_WINDOW; i++) begin
+        history_valid_q[i] <= 1'b0;
+        history_seq_q[i]   <= '0;
+      end
     end else if (flush_i) begin
       hold_valid_q     <= 1'b0;
       hold_data_q      <= '0;
@@ -65,6 +83,10 @@ module ucie_adapter_rx #(
       crc_error_o      <= 1'b0;
       duplicate_o      <= 1'b0;
       sequence_error_o <= 1'b0;
+      for (i = 0; i < DUP_WINDOW; i++) begin
+        history_valid_q[i] <= 1'b0;
+        history_seq_q[i]   <= '0;
+      end
     end else begin
       ack_valid_o      <= 1'b0;
       retry_valid_o    <= 1'b0;
@@ -86,6 +108,13 @@ module ucie_adapter_rx #(
           ack_valid_o    <= 1'b1;
           ack_seq_o      <= rdi_seq_i;
           expected_seq_q <= expected_seq_q + 1'b1;
+
+          for (i = DUP_WINDOW-1; i > 0; i--) begin
+            history_valid_q[i] <= history_valid_q[i-1];
+            history_seq_q[i]   <= history_seq_q[i-1];
+          end
+          history_valid_q[0] <= 1'b1;
+          history_seq_q[0]   <= rdi_seq_i;
         end else if (recent_duplicate) begin
           ack_valid_o <= 1'b1;
           ack_seq_o   <= rdi_seq_i;
