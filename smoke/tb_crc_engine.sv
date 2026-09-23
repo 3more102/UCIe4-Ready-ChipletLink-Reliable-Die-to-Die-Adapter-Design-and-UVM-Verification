@@ -47,6 +47,7 @@ module tb_crc_engine;
       seq_i   = i;
       data_i  = {8{32'h1020_3040 ^ i}};
       expected_crc = crc32_bitwise(data_i, seq_i);
+      #1;
 
       if (!comb_ready || !pipe_ready)
         $fatal(1, "CRC engine unexpectedly backpressured at item %0d", i);
