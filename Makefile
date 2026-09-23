@@ -1,4 +1,4 @@
-.PHONY: test lint smoke smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset uvm clean
+.PHONY: test lint smoke smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset smoke-perf uvm clean
 
 RTL_COMMON = \
 	rtl/ucie_adapter_pkg.sv \
@@ -6,6 +6,7 @@ RTL_COMMON = \
 	rtl/ucie_replay_buffer.sv \
 	rtl/ucie_adapter_tx.sv \
 	rtl/ucie_adapter_rx.sv \
+	rtl/ucie_perf_counters.sv \
 	rtl/ucie_adapter_top.sv
 
 test:
@@ -14,7 +15,7 @@ test:
 lint:
 	verilator --lint-only -Wall -Wno-fatal --top-module ucie_adapter_top $(RTL_COMMON)
 
-smoke: smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset
+smoke: smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset smoke-perf
 
 smoke-link:
 	mkdir -p build
@@ -47,6 +48,11 @@ smoke-reset:
 	mkdir -p build
 	iverilog -g2012 -o build/smoke_reset.vvp $(RTL_COMMON) smoke/tb_reset_outstanding.sv
 	vvp build/smoke_reset.vvp
+
+smoke-perf:
+	mkdir -p build
+	iverilog -g2012 -o build/smoke_perf.vvp $(RTL_COMMON) smoke/tb_perf_counters.sv
+	vvp build/smoke_perf.vvp
 
 uvm:
 	@echo "Run scripts/run_questa.sh with a simulator installation that provides UVM."
