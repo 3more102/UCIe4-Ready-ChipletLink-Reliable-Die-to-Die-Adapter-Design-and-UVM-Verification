@@ -24,6 +24,8 @@ Design and UVM-based verification of a reliable die-to-die adapter for chiplet s
 - Python golden reliability model
 - synthesizable performance and reliability observability counters
 
+Detailed engineering objectives, architecture boundaries, and success criteria: [docs/PROJECT_GOALS.md](docs/PROJECT_GOALS.md)
+
 ## Conformance boundary
 
 The interfaces are simplified educational abstractions. This repository does **not** claim complete UCIe 3.0 compliance and does not claim UCIe 4.0 compliance before an official public 4.0 specification exists.
