@@ -1,4 +1,4 @@
-.PHONY: test lint smoke smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset smoke-perf smoke-backpressure uvm clean
+.PHONY: test lint smoke smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset smoke-perf smoke-backpressure smoke-crc synth-crc uvm clean
 
 RTL_COMMON = \
 	rtl/ucie_adapter_pkg.sv \
@@ -7,6 +7,7 @@ RTL_COMMON = \
 	rtl/ucie_adapter_tx.sv \
 	rtl/ucie_adapter_rx.sv \
 	rtl/ucie_perf_counters.sv \
+	rtl/ucie_crc32_engine.sv \
 	rtl/ucie_adapter_top.sv
 
 test:
@@ -15,7 +16,7 @@ test:
 lint:
 	verilator --lint-only -Wall -Wno-fatal --top-module ucie_adapter_top $(RTL_COMMON)
 
-smoke: smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset smoke-perf smoke-backpressure
+smoke: smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset smoke-perf smoke-backpressure smoke-crc
 
 smoke-link:
 	mkdir -p build
@@ -58,6 +59,18 @@ smoke-backpressure:
 	mkdir -p build
 	iverilog -g2012 -o build/smoke_backpressure.vvp $(RTL_COMMON) smoke/tb_backpressure.sv
 	vvp build/smoke_backpressure.vvp
+
+smoke-crc:
+	mkdir -p build
+	iverilog -g2012 -o build/smoke_crc.vvp \
+		rtl/ucie_adapter_pkg.sv rtl/ucie_crc32_engine.sv smoke/tb_crc_engine.sv
+	vvp build/smoke_crc.vvp
+
+synth-crc:
+	mkdir -p reports/synth
+	yosys -q -s scripts/synth_crc_comb.ys
+	yosys -q -s scripts/synth_crc_pipe.ys
+	python scripts/summarize_synth.py
 
 uvm:
 	@echo "Run scripts/run_questa.sh with a simulator installation that provides UVM."
