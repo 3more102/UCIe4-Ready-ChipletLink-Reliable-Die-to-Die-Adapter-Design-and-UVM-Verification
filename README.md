@@ -22,12 +22,13 @@ Design and UVM-based verification of a reliable die-to-die adapter for chiplet s
 - SystemVerilog Assertions (SVA)
 - UVM constrained-random stimulus, monitors, scoreboard and coverage hooks
 - Python golden reliability model
+- synthesizable performance and reliability observability counters
 
 ## Conformance boundary
 
 The interfaces are simplified educational abstractions. This repository does **not** claim complete UCIe 3.0 compliance and does not claim UCIe 4.0 compliance before an official public 4.0 specification exists.
 
-## Verified reliability milestones
+## Verified engineering milestones
 
 ### M1 — replay/order hardening
 
@@ -52,13 +53,26 @@ The interfaces are simplified educational abstractions. This repository does **n
 
 ### M3 — verification closure
 
-- exact duplicate-history tracking instead of modular-distance approximation
+- exact duplicate-history tracking
 - UVM reliability functional coverage with state/error/backpressure crosses
 - reset and administrative-disable regressions while reliability state is outstanding
 - SVA for link gating, stalled-transfer stability, retry behavior, duplicate re-ACK, and fatal-fault latching
 - deterministic Questa seed runner
 - machine-readable UVM regression summary at `reports/uvm/summary.json`
 - Verilator RTL lint in GitHub Actions
+
+### M4-A — performance observability
+
+- synthesizable saturating performance counters
+- active-link cycles
+- protocol-side TX accepts
+- RDI TX transfers
+- protocol-side RX deliveries
+- retry-request count
+- reliability-error event count
+- TX backpressure stall cycles
+- replay overhead observable as `RDI transfers - protocol accepts`
+- directed regression for clean traffic, backpressure, and replay overhead
 
 ## Quick checks
 
@@ -70,13 +84,14 @@ make smoke
 
 Current automated evidence:
 - **14 Python reliability tests**
-- **6 directed RTL smoke targets**
+- **7 directed RTL smoke targets**
   - corruption → retry → replay
   - selective-ACK replay integrity
   - duplicate/order handling
   - ACK timeout → bounded retry exhaustion → fail-stop
   - administrative disable → reliability epoch flush
   - reset with an outstanding flit → no stale replay, sequence epoch restarts
+  - performance counters → clean accepts, backpressure stalls, retry/replay overhead
 - Verilator RTL lint
 
 For a simulator installation that provides UVM:
@@ -86,6 +101,12 @@ SEEDS="1 7 42 31415" ./scripts/run_questa_regression.sh
 ```
 
 The seeded runner writes per-seed logs plus a JSON summary. It is intentionally separate from the open-source CI jobs because the repository does not redistribute a commercial simulator.
+
+## Performance counter semantics
+
+The M4-A counters are cumulative from hardware reset and saturate instead of wrapping. Administrative link disable does not clear them, so measurements can span multiple reliability epochs.
+
+`perf_fdi_tx_accepts_o` counts new protocol-side traffic while `perf_rdi_tx_transfers_o` counts every physical-side transfer, including replays. Their difference therefore exposes retry/replay transmission overhead for a measurement interval that starts at reset.
 
 ## Repository layout
 
@@ -115,15 +136,16 @@ docs/                Architecture, scope, verification plan, roadmap, traceabili
 - backpressure cannot change an in-flight payload
 - normal data transfer is blocked while the link is inactive or faulted
 - reset/disable cannot leak pre-reset outstanding traffic into a new reliability epoch
+- performance counters distinguish new accepted traffic from replayed physical transfers
 
 ## Next engineering frontier
 
-M4 focuses on performance and implementation evidence:
+M4 continues with implementation evidence:
 - optional pipelined CRC datapath
-- clean-link throughput and latency counters
-- retry/recovery penalty counters
-- synthesis scripts and machine-readable area/Fmax reports
-- implementation-oriented comparison of combinational vs pipelined CRC
+- latency instrumentation
+- synthesis automation
+- machine-readable area/Fmax reports
+- implementation comparison of combinational and pipelined CRC
 
 ## Standards references
 
