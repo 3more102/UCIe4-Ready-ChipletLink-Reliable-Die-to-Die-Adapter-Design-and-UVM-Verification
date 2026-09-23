@@ -14,15 +14,35 @@ module ucie_link_manager (
   always_comb begin
     state_d = state_q;
     unique case (state_q)
-      LINK_RESET:    state_d = enable_i ? LINK_INIT : LINK_DISABLED;
-      LINK_DISABLED: state_d = enable_i ? LINK_INIT : LINK_DISABLED;
-      LINK_INIT:     state_d = (!enable_i) ? LINK_DISABLED :
-                                   (settle_q == 3'd4) ? LINK_ACTIVE : LINK_INIT;
-      LINK_ACTIVE:   state_d = (!enable_i) ? LINK_DISABLED :
-                                   error_event_i ? LINK_RECOVERY : LINK_ACTIVE;
-      LINK_RECOVERY: state_d = (!enable_i) ? LINK_DISABLED :
-                                   (settle_q == 3'd2) ? LINK_ACTIVE : LINK_RECOVERY;
-      default:       state_d = LINK_RESET;
+      LINK_RESET: begin
+        if (enable_i) state_d = LINK_INIT;
+        else          state_d = LINK_DISABLED;
+      end
+
+      LINK_DISABLED: begin
+        if (enable_i) state_d = LINK_INIT;
+        else          state_d = LINK_DISABLED;
+      end
+
+      LINK_INIT: begin
+        if (!enable_i)             state_d = LINK_DISABLED;
+        else if (settle_q == 3'd4) state_d = LINK_ACTIVE;
+        else                       state_d = LINK_INIT;
+      end
+
+      LINK_ACTIVE: begin
+        if (!enable_i)        state_d = LINK_DISABLED;
+        else if (error_event_i) state_d = LINK_RECOVERY;
+        else                  state_d = LINK_ACTIVE;
+      end
+
+      LINK_RECOVERY: begin
+        if (!enable_i)             state_d = LINK_DISABLED;
+        else if (settle_q == 3'd2) state_d = LINK_ACTIVE;
+        else                       state_d = LINK_RECOVERY;
+      end
+
+      default: state_d = LINK_RESET;
     endcase
   end
 
@@ -36,8 +56,6 @@ module ucie_link_manager (
         settle_q <= '0;
       else if ((state_q == LINK_INIT || state_q == LINK_RECOVERY) && settle_q != 3'd7)
         settle_q <= settle_q + 3'd1;
-      else
-        settle_q <= settle_q;
     end
   end
 
