@@ -81,6 +81,11 @@ module tb_duplicate;
     if (duplicate_pulses != 1) $fatal(1, "duplicate event not observed");
     if (retry_valid || crc_error || sequence_error) $fatal(1, "duplicate incorrectly treated as error");
 
+    send_flit(8'd250, 256'h250);
+    if (!retry_valid || retry_seq != 8'd1 || !sequence_error || duplicate)
+      $fatal(1, "unseen seq250 was falsely classified as a duplicate");
+    @(posedge clk);
+
     rdi_seq = 8'd2;
     rdi_data = 256'h222;
     rdi_crc = crc32_bitwise(rdi_data, rdi_seq);
@@ -91,7 +96,7 @@ module tb_duplicate;
       $fatal(1, "sequence gap did not request expected seq1");
     rdi_valid = 1'b0;
 
-    $display("DUPLICATE/ORDER SMOKE PASS");
+    $display("DUPLICATE/ORDER/HISTORY SMOKE PASS");
     $finish;
   end
 

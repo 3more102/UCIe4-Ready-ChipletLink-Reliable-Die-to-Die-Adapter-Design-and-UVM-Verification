@@ -70,6 +70,31 @@ def test_duplicate_is_reacked_but_not_redelivered():
     assert duplicate["duplicate"]
 
 
+def test_unseen_wraparound_looking_sequence_is_not_false_duplicate():
+    m = ReliabilityModel(duplicate_window=16)
+    data0 = 0x10
+    assert m.receive(0, data0, crc32_ucie_edu(data0, 0))["data"] == data0
+    data250 = 0xFA
+    result = m.receive(250, data250, crc32_ucie_edu(data250, 250))
+    assert result["ack"] is None
+    assert result["retry"] == 1
+    assert result["sequence_error"]
+    assert not result["duplicate"]
+
+
+def test_duplicate_history_evicts_entries_outside_window():
+    m = ReliabilityModel(duplicate_window=2)
+    for seq in range(3):
+        data = 0x100 + seq
+        assert m.receive(seq, data, crc32_ucie_edu(data, seq))["data"] == data
+
+    old_data = 0x100
+    result = m.receive(0, old_data, crc32_ucie_edu(old_data, 0))
+    assert result["sequence_error"]
+    assert result["retry"] == 3
+    assert not result["duplicate"]
+
+
 def test_out_of_order_flit_requests_expected_sequence():
     m = ReliabilityModel()
     seq0, data0, crc0 = m.send(0x10)
@@ -158,6 +183,7 @@ def test_administrative_flush_resets_reliability_epoch():
     assert m.replay == {}
     assert m.retry_count == {}
     assert m.age == {}
+    assert m.accepted_history == []
     assert m.next_seq == 0
     assert m.expected_rx_seq == 0
     assert m.send(0x456)[0] == 0

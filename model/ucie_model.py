@@ -55,6 +55,7 @@ class ReliabilityModel:
         self.replay = {}
         self.retry_count = {}
         self.age = {}
+        self.accepted_history = []
 
     def _allocate_seq(self) -> int:
         seq = self.next_seq
@@ -75,7 +76,12 @@ class ReliabilityModel:
         self.age[seq] = 0
         return seq, data, crc
 
+    def _remember_accepted(self, seq: int):
+        self.accepted_history.insert(0, seq)
+        del self.accepted_history[self.duplicate_window :]
+
     def receive(self, seq: int, data: int, crc: int):
+        seq &= 0xFF
         if crc32_ucie_edu(data, seq) != crc:
             return {
                 "ack": None,
@@ -86,10 +92,10 @@ class ReliabilityModel:
                 "crc_error": True,
             }
 
-        seq &= 0xFF
         expected = self.expected_rx_seq
         if seq == expected:
             self.expected_rx_seq = (expected + 1) & 0xFF
+            self._remember_accepted(seq)
             return {
                 "ack": seq,
                 "retry": None,
@@ -99,8 +105,7 @@ class ReliabilityModel:
                 "crc_error": False,
             }
 
-        distance_back = (expected - seq) & 0xFF
-        if 1 <= distance_back <= self.duplicate_window:
+        if seq in self.accepted_history:
             return {
                 "ack": seq,
                 "retry": None,
@@ -159,3 +164,4 @@ class ReliabilityModel:
         self.replay.clear()
         self.retry_count.clear()
         self.age.clear()
+        self.accepted_history.clear()

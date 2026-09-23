@@ -161,11 +161,86 @@ package ucie_uvm_pkg;
     endfunction
   endclass
 
+  class ucie_reliability_coverage extends uvm_component;
+    `uvm_component_utils(ucie_reliability_coverage)
+    virtual reliability_if vif;
+
+    covergroup reliability_cg with function sample(
+      bit [2:0] state,
+      bit backpressure,
+      bit crc_error,
+      bit sequence_error,
+      bit duplicate_event,
+      bit replay_miss,
+      bit retry_exhausted
+    );
+      option.per_instance = 1;
+
+      cp_state: coverpoint state {
+        bins reset    = {3'd0};
+        bins init     = {3'd1};
+        bins active   = {3'd2};
+        bins recovery = {3'd3};
+        bins disabled = {3'd4};
+        illegal_bins reserved = default;
+      }
+
+      cp_backpressure: coverpoint backpressure {
+        bins flowing = {0};
+        bins stalled = {1};
+      }
+
+      cp_crc_error: coverpoint crc_error { bins hit = {1}; }
+      cp_sequence_error: coverpoint sequence_error { bins hit = {1}; }
+      cp_duplicate: coverpoint duplicate_event { bins hit = {1}; }
+
+      cp_fatal: coverpoint {retry_exhausted, replay_miss} {
+        bins none            = {2'b00};
+        bins replay_miss     = {2'b01};
+        bins retry_exhausted = {2'b10};
+        illegal_bins both    = {2'b11};
+      }
+
+      cx_state_crc: cross cp_state, cp_crc_error;
+      cx_state_sequence: cross cp_state, cp_sequence_error;
+      cx_state_backpressure: cross cp_state, cp_backpressure;
+    endgroup
+
+    function new(string name, uvm_component parent);
+      super.new(name,parent);
+      reliability_cg = new();
+    endfunction
+
+    function void build_phase(uvm_phase phase);
+      super.build_phase(phase);
+      if (!uvm_config_db#(virtual reliability_if)::get(this,"","vif",vif))
+        `uvm_fatal("NOVIF","reliability_if not configured")
+    endfunction
+
+    task run_phase(uvm_phase phase);
+      forever begin
+        @(posedge vif.clk);
+        if (vif.rst_n) begin
+          reliability_cg.sample(
+            vif.link_state,
+            vif.rdi_valid && !vif.rdi_ready,
+            vif.crc_error,
+            vif.sequence_error,
+            vif.duplicate,
+            vif.replay_miss,
+            vif.retry_exhausted
+          );
+        end
+      end
+    endtask
+  endclass
+
   class ucie_env extends uvm_env;
     `uvm_component_utils(ucie_env)
     ucie_agent src;
     ucie_monitor dst_mon;
     ucie_scoreboard scb;
+    ucie_reliability_coverage cov;
 
     function new(string name, uvm_component parent); super.new(name,parent); endfunction
     function void build_phase(uvm_phase phase);
@@ -173,6 +248,7 @@ package ucie_uvm_pkg;
       src = ucie_agent::type_id::create("src",this);
       dst_mon = ucie_monitor::type_id::create("dst_mon",this);
       scb = ucie_scoreboard::type_id::create("scb",this);
+      cov = ucie_reliability_coverage::type_id::create("cov",this);
     endfunction
     function void connect_phase(uvm_phase phase);
       src.mon.ap.connect(scb.exp_imp);

@@ -12,8 +12,10 @@ module tb_top;
   fdi_if src_if(clk);
   fdi_if dst_if(clk);
   error_inject_if err_if(clk);
+  reliability_if rel_if(clk);
 
   logic a_link_active, b_link_active;
+  logic a_link_fault, b_link_fault;
   link_state_e a_state, b_state;
 
   logic a_tx_v, a_tx_r;
@@ -33,7 +35,10 @@ module tb_top;
   logic [FLIT_W-1:0] unused_b_tx_data;
   logic [SEQ_W-1:0] unused_b_tx_seq;
   logic [CRC_W-1:0] unused_b_tx_crc;
+
   logic a_crc_err, b_crc_err, a_replay_miss, b_replay_miss;
+  logic a_retry_exhausted, b_retry_exhausted;
+  logic [SEQ_W-1:0] a_retry_exhausted_seq, b_retry_exhausted_seq;
   logic a_dup, b_dup, a_seq_err, b_seq_err, a_seq_block, b_seq_block;
 
   ucie_adapter_top u_a (
@@ -44,7 +49,9 @@ module tb_top;
     .rdi_rx_valid_i(1'b0), .rdi_rx_ready_o(unused_a_rx_ready), .rdi_rx_data_i('0), .rdi_rx_seq_i('0), .rdi_rx_crc_i('0),
     .peer_ack_valid_i(b_ack_v), .peer_ack_seq_i(b_ack_s), .peer_retry_valid_i(b_retry_v), .peer_retry_seq_i(b_retry_s),
     .local_ack_valid_o(), .local_ack_seq_o(), .local_retry_valid_o(), .local_retry_seq_o(),
-    .link_active_o(a_link_active), .link_state_o(a_state), .crc_error_o(a_crc_err), .replay_miss_o(a_replay_miss),
+    .link_active_o(a_link_active), .link_fault_o(a_link_fault), .link_state_o(a_state),
+    .crc_error_o(a_crc_err), .replay_miss_o(a_replay_miss),
+    .retry_exhausted_o(a_retry_exhausted), .retry_exhausted_seq_o(a_retry_exhausted_seq),
     .duplicate_o(a_dup), .sequence_error_o(a_seq_err), .seq_wrap_block_o(a_seq_block)
   );
 
@@ -63,31 +70,47 @@ module tb_top;
     .rdi_rx_valid_i(b_rx_v), .rdi_rx_ready_o(b_rx_r), .rdi_rx_data_i(b_rx_d), .rdi_rx_seq_i(b_rx_s), .rdi_rx_crc_i(b_rx_c),
     .peer_ack_valid_i(1'b0), .peer_ack_seq_i('0), .peer_retry_valid_i(1'b0), .peer_retry_seq_i('0),
     .local_ack_valid_o(b_ack_v), .local_ack_seq_o(b_ack_s), .local_retry_valid_o(b_retry_v), .local_retry_seq_o(b_retry_s),
-    .link_active_o(b_link_active), .link_state_o(b_state), .crc_error_o(b_crc_err), .replay_miss_o(b_replay_miss),
+    .link_active_o(b_link_active), .link_fault_o(b_link_fault), .link_state_o(b_state),
+    .crc_error_o(b_crc_err), .replay_miss_o(b_replay_miss),
+    .retry_exhausted_o(b_retry_exhausted), .retry_exhausted_seq_o(b_retry_exhausted_seq),
     .duplicate_o(b_dup), .sequence_error_o(b_seq_err), .seq_wrap_block_o(b_seq_block)
   );
 
   ucie_adapter_sva sva_a (
-    .clk(clk), .rst_n(rst_n), .link_active(a_link_active),
+    .clk(clk), .rst_n(rst_n), .link_active(a_link_active), .link_fault(a_link_fault),
     .fdi_tx_ready(src_if.ready),
     .rdi_tx_valid(a_tx_v), .rdi_tx_ready(a_tx_r),
     .rdi_tx_data(a_tx_d), .rdi_tx_seq(a_tx_s), .rdi_tx_crc(a_tx_c),
     .crc_error(a_crc_err), .sequence_error(a_seq_err),
+    .replay_miss(a_replay_miss), .retry_exhausted(a_retry_exhausted),
     .local_ack_valid(1'b0), .local_retry_valid(1'b0), .duplicate_event(a_dup)
   );
 
   ucie_adapter_sva sva_b (
-    .clk(clk), .rst_n(rst_n), .link_active(b_link_active),
+    .clk(clk), .rst_n(rst_n), .link_active(b_link_active), .link_fault(b_link_fault),
     .fdi_tx_ready(1'b0),
     .rdi_tx_valid(unused_b_tx_valid), .rdi_tx_ready(1'b1),
     .rdi_tx_data(unused_b_tx_data), .rdi_tx_seq(unused_b_tx_seq), .rdi_tx_crc(unused_b_tx_crc),
     .crc_error(b_crc_err), .sequence_error(b_seq_err),
+    .replay_miss(b_replay_miss), .retry_exhausted(b_retry_exhausted),
     .local_ack_valid(b_ack_v), .local_retry_valid(b_retry_v), .duplicate_event(b_dup)
   );
 
   assign dst_if.ready = 1'b1;
   assign src_if.rst_n = rst_n;
   assign dst_if.rst_n = rst_n;
+
+  assign rel_if.rst_n            = rst_n;
+  assign rel_if.link_state       = b_state;
+  assign rel_if.link_active      = b_link_active;
+  assign rel_if.link_fault       = a_link_fault | b_link_fault;
+  assign rel_if.rdi_valid        = a_tx_v;
+  assign rel_if.rdi_ready        = a_tx_r;
+  assign rel_if.crc_error        = b_crc_err;
+  assign rel_if.sequence_error   = b_seq_err;
+  assign rel_if.duplicate        = b_dup;
+  assign rel_if.replay_miss      = a_replay_miss | b_replay_miss;
+  assign rel_if.retry_exhausted  = a_retry_exhausted | b_retry_exhausted;
 
   initial begin
     rst_n = 0;
@@ -104,6 +127,7 @@ module tb_top;
     uvm_config_db#(virtual fdi_if)::set(null,"uvm_test_top.env.src.*","vif",src_if);
     uvm_config_db#(virtual error_inject_if)::set(null,"uvm_test_top.env.src.drv","err_vif",err_if);
     uvm_config_db#(virtual fdi_if)::set(null,"uvm_test_top.env.dst_mon","vif",dst_if);
-    run_test("ucie_reliability_test");
+    uvm_config_db#(virtual reliability_if)::set(null,"uvm_test_top.env.cov","vif",rel_if);
+    run_test();
   end
 endmodule
