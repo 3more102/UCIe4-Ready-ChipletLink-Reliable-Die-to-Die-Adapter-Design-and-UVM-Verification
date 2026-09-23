@@ -8,6 +8,7 @@ module tb_top;
   always #5ns clk = ~clk;
   logic rst_n;
   logic enable;
+  logic [3:0] backpressure_phase_q;
 
   fdi_if src_if(clk);
   fdi_if dst_if(clk);
@@ -96,7 +97,23 @@ module tb_top;
     .local_ack_valid(b_ack_v), .local_retry_valid(b_retry_v), .duplicate_event(b_dup)
   );
 
-  assign dst_if.ready = 1'b1;
+  // Deterministic sink backpressure: 3 stalled cycles in every 16-cycle
+  // window while the link is enabled. This guarantees that the UVM
+  // reliability coverage backpressure bin is reachable on every long run.
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      backpressure_phase_q <= '0;
+      dst_if.ready <= 1'b1;
+    end else if (!enable) begin
+      backpressure_phase_q <= '0;
+      dst_if.ready <= 1'b1;
+    end else begin
+      backpressure_phase_q <= backpressure_phase_q + 1'b1;
+      dst_if.ready <= !((backpressure_phase_q >= 4'd5) &&
+                        (backpressure_phase_q <= 4'd7));
+    end
+  end
+
   assign src_if.rst_n = rst_n;
   assign dst_if.rst_n = rst_n;
 
