@@ -1,0 +1,12 @@
+work/
+transcript
+vsim.wlf
+*.vcd
+*.fst
+*.log
+*.jou
+*.pb
+__pycache__/
+.pytest_cache/
+*.pyc
+build/
