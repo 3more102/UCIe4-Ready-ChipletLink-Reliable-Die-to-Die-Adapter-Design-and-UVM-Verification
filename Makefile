@@ -1,4 +1,4 @@
-.PHONY: test smoke smoke-link smoke-replay smoke-duplicate uvm clean
+.PHONY: test smoke smoke-link smoke-replay smoke-duplicate smoke-timeout uvm clean
 
 RTL_COMMON = \
 	rtl/ucie_adapter_pkg.sv \
@@ -11,7 +11,7 @@ RTL_COMMON = \
 test:
 	python -m pytest -q
 
-smoke: smoke-link smoke-replay smoke-duplicate
+smoke: smoke-link smoke-replay smoke-duplicate smoke-timeout
 
 smoke-link:
 	mkdir -p build
@@ -29,6 +29,11 @@ smoke-duplicate:
 	iverilog -g2012 -o build/smoke_duplicate.vvp \
 		rtl/ucie_adapter_pkg.sv rtl/ucie_adapter_rx.sv smoke/tb_duplicate.sv
 	vvp build/smoke_duplicate.vvp
+
+smoke-timeout:
+	mkdir -p build
+	iverilog -g2012 -o build/smoke_timeout.vvp $(RTL_COMMON) smoke/tb_timeout.sv
+	vvp build/smoke_timeout.vvp
 
 uvm:
 	@echo "Run scripts/run_questa.sh with a simulator installation that provides UVM."

@@ -6,7 +6,7 @@ This repository does not assume that a public UCIe 4.0 specification exists. As 
 
 ## Why the code is "4.0-ready"
 
-The project isolates likely future-evolution points without inventing 4.0 requirements:
+The project isolates future-evolution points without inventing 4.0 requirements:
 
 - `rtl/ucie_adapter_pkg.sv`: widths, constants, state types
 - TX/RX reliability blocks: replaceable policy logic
@@ -17,26 +17,31 @@ The project isolates likely future-evolution points without inventing 4.0 requir
 
 ## Milestones
 
-### M1 — Reliability hardening
+### M1 — Reliability hardening — COMPLETE
 - replay overwrite protection
 - sequence-wrap collision blocking
 - duplicate suppression
 - sequence-gap detection
-- model retry budget
+- reference-model retry budget
 - directed regressions
 
-### M2 — Timeout and retry escalation
-- automatic ACK timeout
-- per-sequence or window retry accounting
-- retry-exhausted status/error path
-- timeout/recovery directed and UVM tests
+### M2 — Timeout and retry escalation — COMPLETE
+- per-entry automatic ACK timeout
+- timeout-triggered replay scheduling
+- per-sequence retry accounting
+- bounded retry exhaustion
+- fail-stop link-fault latch
+- administrative reliability-state flush
+- timeout/recovery directed and model tests
 
-### M3 — UVM closure
-- coverage collector
-- error/backpressure/state crosses
-- reset during outstanding traffic
-- replay occupancy and wrap scenarios
+### M3 — Verification closure — NEXT
+- exact duplicate-history tracking
+- UVM functional coverage collector
+- error/backpressure/state/retry crosses
+- reset/disable during outstanding traffic
+- timeout/retry/link-fault SVA
 - deterministic seeds and regression summaries
+- Verilator lint in CI
 
 ### M4 — Performance/implementation
 - pipelined CRC option

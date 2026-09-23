@@ -9,27 +9,28 @@
 Design and UVM-based verification of a reliable die-to-die adapter for chiplet systems:
 
 - FDI-like protocol-side and RDI-like link-side educational abstractions
-- link initialization and recovery state machine
+- link initialization, recovery, and fail-stop state handling
 - 256-bit flits with repository-defined CRC-32 consistency check
 - sequence numbering
 - ACK / retry control
 - replay buffer with collision-safe allocation
+- automatic ACK timeout
+- bounded replay retry budget
 - backpressure-safe handshakes
 - duplicate suppression and sequence-gap detection
 - injected corruption and recovery testing
 - SystemVerilog Assertions (SVA)
-- UVM constrained-random stimulus, monitors, scoreboard and coverage
+- UVM constrained-random stimulus, monitors, scoreboard and coverage hooks
 - Python golden reliability model
 
 ## Conformance boundary
 
 The interfaces are simplified educational abstractions. This repository does **not** claim complete UCIe 3.0 compliance and does not claim UCIe 4.0 compliance before an official public 4.0 specification exists.
 
-## Current milestone
+## Verified reliability milestones
 
-### M1 reliability hardening
+### M1 — replay/order hardening
 
-Implemented:
 - CRC protection and corruption detection
 - sequence IDs
 - ACK/retry and replay
@@ -38,12 +39,16 @@ Implemented:
 - receiver duplicate suppression with re-ACK
 - out-of-order/gap detection requesting the next expected sequence
 - link recovery on CRC or sequence error
-- Python reference-model retry budget and wrap tests
 
-Next:
-- automatic ACK timeout and bounded retry exhaustion in RTL
-- richer UVM coverage crosses and negative tests
-- performance counters and pipelined CRC
+### M2 — timeout and retry escalation
+
+- per-entry ACK aging
+- automatic timeout-triggered replay
+- bounded retry count
+- retry-exhaustion status with failing sequence ID
+- fail-stop link-fault latch on unrecoverable replay failure
+- administrative disable flushes reliability state and permits a clean re-enable
+- race handling for ACK arrival while replay is pending
 
 ## Quick checks
 
@@ -52,7 +57,13 @@ python -m pytest -q
 make smoke
 ```
 
-The Python suite contains 12 reliability tests. `make smoke` runs link recovery, replay-buffer selective-ACK, and duplicate/order directed RTL tests with Icarus Verilog.
+Current CI evidence:
+- **14 Python reliability tests**
+- **4 directed RTL smoke targets**
+  - corruption → retry → replay
+  - selective-ACK replay integrity
+  - duplicate/order handling
+  - ACK timeout → bounded retry exhaustion → fail-stop/reset
 
 ## Repository layout
 
@@ -77,8 +88,20 @@ docs/                Architecture, scope, verification plan, roadmap, traceabili
 - ACK frees only the matching replay entry
 - selective ACK cannot cause overwrite of another live replay entry
 - a wrapped sequence number cannot be reallocated while still outstanding
+- missing ACK automatically triggers replay
+- retries stop at the configured budget and raise a link fault
 - backpressure cannot change an in-flight payload
-- normal data transfer is blocked while the link is inactive
+- normal data transfer is blocked while the link is inactive or faulted
+
+## Next engineering frontier
+
+M3 focuses on verification closure and observability:
+- exact duplicate-history tracking rather than a modular-distance approximation
+- UVM functional coverage collector and crosses
+- reset/disable during outstanding traffic
+- retry/timeout/link-state SVA
+- deterministic regression seeds and machine-readable summaries
+- Verilator RTL lint in CI
 
 ## Standards references
 
