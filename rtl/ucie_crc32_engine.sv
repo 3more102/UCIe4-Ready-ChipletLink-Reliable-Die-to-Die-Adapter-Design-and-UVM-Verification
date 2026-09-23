@@ -1,5 +1,7 @@
 module ucie_crc32_engine #(
-  parameter bit PIPELINED = 1'b0
+  parameter bit PIPELINED = 1'b0,
+  parameter int DATA_W    = 256,
+  parameter int SEQ_W     = 8
 ) (
   input  logic clk,
   input  logic rst_n,
@@ -7,23 +9,47 @@ module ucie_crc32_engine #(
 
   input  logic valid_i,
   output logic ready_o,
-  input  logic [ucie_adapter_pkg::FLIT_W-1:0] data_i,
-  input  logic [ucie_adapter_pkg::SEQ_W-1:0]  seq_i,
+  input  logic [DATA_W-1:0] data_i,
+  input  logic [SEQ_W-1:0]  seq_i,
 
   output logic valid_o,
   input  logic ready_i,
-  output logic [ucie_adapter_pkg::CRC_W-1:0] crc_o
+  output logic [31:0] crc_o
 );
-  import ucie_adapter_pkg::*;
+
+  function automatic logic [31:0] crc32_local(
+    input logic [DATA_W-1:0] data,
+    input logic [SEQ_W-1:0]  seq
+  );
+    logic [31:0] crc;
+    logic feedback;
+    integer i;
+    begin
+      crc = 32'hFFFF_FFFF;
+      for (i = SEQ_W-1; i >= 0; i = i - 1) begin
+        feedback = crc[31] ^ seq[i];
+        crc = {crc[30:0], 1'b0};
+        if (feedback)
+          crc = crc ^ 32'h04C11DB7;
+      end
+      for (i = DATA_W-1; i >= 0; i = i - 1) begin
+        feedback = crc[31] ^ data[i];
+        crc = {crc[30:0], 1'b0};
+        if (feedback)
+          crc = crc ^ 32'h04C11DB7;
+      end
+      crc32_local = ~crc;
+    end
+  endfunction
 
   generate
     if (!PIPELINED) begin : g_comb
       assign ready_o = ready_i;
       assign valid_o = valid_i;
-      assign crc_o   = crc32_bitwise(data_i, seq_i);
+      assign crc_o   = crc32_local(data_i, seq_i);
     end else begin : g_pipe
       logic valid_q;
-      logic [CRC_W-1:0] crc_q;
+      logic [31:0] crc_q;
 
       assign ready_o = !valid_q || ready_i;
       assign valid_o = valid_q;
@@ -39,7 +65,7 @@ module ucie_crc32_engine #(
         end else if (ready_o) begin
           valid_q <= valid_i;
           if (valid_i)
-            crc_q <= crc32_bitwise(data_i, seq_i);
+            crc_q <= crc32_local(data_i, seq_i);
         end
       end
     end

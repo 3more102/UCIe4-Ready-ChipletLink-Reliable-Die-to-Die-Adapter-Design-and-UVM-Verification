@@ -1,4 +1,4 @@
-.PHONY: test lint synth smoke smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset smoke-perf smoke-backpressure smoke-crc synth-crc uvm clean
+.PHONY: test lint synth synth-full-experimental smoke smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset smoke-perf smoke-backpressure smoke-crc synth-crc uvm clean
 
 RTL_COMMON = \
 	rtl/ucie_adapter_pkg.sv \
@@ -16,7 +16,9 @@ test:
 lint:
 	verilator --lint-only -Wall -Wno-fatal --top-module ucie_adapter_top $(RTL_COMMON)
 
-synth:
+synth: synth-crc
+
+synth-full-experimental:
 	bash scripts/run_yosys_synth.sh
 
 smoke: smoke-link smoke-replay smoke-duplicate smoke-timeout smoke-disable smoke-reset smoke-perf smoke-backpressure smoke-crc

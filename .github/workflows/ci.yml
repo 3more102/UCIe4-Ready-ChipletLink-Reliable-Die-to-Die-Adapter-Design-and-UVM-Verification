@@ -39,14 +39,3 @@ jobs:
         with:
           name: crc-synthesis-evidence
           path: reports/synth/*.json
-
-  rtl-synth:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y yosys
-      - run: make synth
-      - uses: actions/upload-artifact@v4
-        with:
-          name: yosys-synthesis-report
-          path: reports/synth/
