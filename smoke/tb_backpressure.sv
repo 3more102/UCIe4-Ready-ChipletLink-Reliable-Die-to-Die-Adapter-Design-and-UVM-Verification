@@ -119,6 +119,9 @@ module tb_backpressure;
         stall_start_count = a_stall_cycles;
         if (stall_start_count == 0)
           $fatal(1, "RDI backpressure never reached the source adapter");
+        // Change ready away from the sampling edge to avoid a testbench race
+        // between the receiver and the delivery monitor.
+        @(negedge clk);
         dst_ready = 1;
       end
     join
