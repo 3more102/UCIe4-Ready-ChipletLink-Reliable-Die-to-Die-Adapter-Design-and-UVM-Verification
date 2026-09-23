@@ -20,10 +20,12 @@ module ucie_perf_counters #(
   output logic [COUNTER_W-1:0] tx_stall_cycles_o
 );
 
+`ifndef SYNTHESIS
   initial begin
     if (COUNTER_W < 1)
       $error("COUNTER_W must be >= 1");
   end
+`endif
 
   function automatic logic [COUNTER_W-1:0] sat_inc(
     input logic [COUNTER_W-1:0] value
